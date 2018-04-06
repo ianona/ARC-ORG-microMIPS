@@ -475,14 +475,17 @@ class CodeTab(wx.Panel):
             args = line.split("BC ")[1]
             opcode += "110010"
 
-            for line in self.lines:
-                if args + ":" in line:
-                    offset = self.codeMemory[line]
+            start = self.lines.index(line)
+            for l in self.lines:
+                if args[1].strip() + ":" in l:
+                    end = self.lines.index(l)
+            offset = end - start - 1
 
-            offset = bin(int(offset,16)).split("b")[1]
-            offset = offset[:-2]
-            offset = offset.zfill(26)
-            opcode += offset
+            # CONSIDER 2's COMPLEMENT WHEN OFFSET IS NEGATIVE
+            if offset >= 0:
+                opcode += '{0:016b}'.format(int(offset))
+            else:
+                opcode += bin(((1 << 16) - 1) & offset).split("b")[1]
 
         opcode = hex(int(opcode,2)).split("x")[1].zfill(8).upper()
         return opcode
