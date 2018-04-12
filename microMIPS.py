@@ -62,7 +62,7 @@ class MainTab(wx.Panel):
         # MANUALLY INITIALIZE REGISTERS ACCDG. TO PROBLEM SET 3
         self.regGrid.SetCellValue(3, 1, "0000000000000004")
         self.regGrid.SetCellValue(2, 1, "0000000000000008")
-        self.regGrid.SetCellValue(1, 1, "0000000000000002")
+        self.regGrid.SetCellValue(1, 1, "AABBCCDDEEFFGGHH")
 
     def run(self, e):
         line = self.MEMORY[self.PC]
@@ -89,13 +89,13 @@ class MainTab(wx.Panel):
             self.daddu(line)
         elif "SD" in line:
             self.sd(line)
-        elif "LD" in current:
+        elif "LD" in line:
             self.ld(line)
-        elif "BC" in current:
+        elif "BC" in line:
             self.bgec(line)
-        elif "BGEC" in current:
+        elif "BGEC" in line:
             self.bgec(line)
-        elif "SLTI" in current:
+        elif "SLTI" in line:
             self.slti(line)
 
         # IF DONE RUNNING INSTRUCTIONS
@@ -203,7 +203,17 @@ class MainTab(wx.Panel):
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
         dataToStore = (self.IMM)[-4:]
-        self.dataRepresentation[dataToStore] = self.B
+        print("B = " + self.B)
+        tempB = self.B
+        # 0 - 15
+        # 14, 15
+        # 
+        for i in range(8):
+            tempByte = tempB[-2:]
+            print("Storing " + tempByte)
+            self.dataRepresentation[dataToStore] = tempByte
+            dataToStore = hex(int(dataToStore, 16) + 1).split("x")[1].zfill(4)
+            tempB = tempB[:-2]
         print("DATA REPRESENTATION")
         print(self.dataRepresentation)
         # CYCLE 5: WB (write-back cycle)
@@ -214,12 +224,18 @@ class MainTab(wx.Panel):
         self.ALUOutput = bin(int(self.A,16) + int(self.IMM,16)).split("b")[1]
         print("ALUOutput: " + self.ALUOutput)
         self.COND = 0
+        
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
         print("DATA REPRESENTATION")
         print(self.dataRepresentation)
         dataToLoad = (self.IMM)[-4:]
-        self.LMD = self.dataRepresentation[dataToLoad]
+        
+        self.LMD = ""
+        for i in range(8):
+            print("Data to Load: " + dataToLoad)
+            self.LMD = self.dataRepresentation[dataToLoad] + self.LMD
+            dataToLoad = hex(int(dataToLoad, 16) + 1).split("x")[1].zfill(4)
         print("LMD")
         print(self.LMD)
         
