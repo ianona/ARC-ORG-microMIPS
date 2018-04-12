@@ -205,18 +205,21 @@ class MainTab(wx.Panel):
         dataToStore = (self.IMM)[-4:]
         print("B = " + self.B)
         tempB = self.B
-        # 0 - 15
-        # 14, 15
-        # 
+        addressRow = 0
+        if int(dataToStore, 16) is not 0:
+            addressRow = 1000 % int(dataToStore, 16)
         for i in range(8):
             tempByte = tempB[-2:]
             print("Storing " + tempByte)
             self.dataRepresentation[dataToStore] = tempByte
             dataToStore = hex(int(dataToStore, 16) + 1).split("x")[1].zfill(4)
             tempB = tempB[:-2]
+            self.dataGrid.SetCellValue(addressRow, 1, tempByte)
+            addressRow = addressRow + 1
         print("DATA REPRESENTATION")
         print(self.dataRepresentation)
         # CYCLE 5: WB (write-back cycle)
+        
         
         
     def ld(self, line):
