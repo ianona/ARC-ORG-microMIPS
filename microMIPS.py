@@ -229,6 +229,7 @@ class MainTab(wx.Panel):
         self.regGrid.SetCellValue(self.regB, 1, self.LMD)
         print("Register: ")
         print(self.regGrid.GetCellValue(self.regB, 1))
+        
     def bc(self, line):
         print(self.NPC)
         
@@ -271,8 +272,9 @@ class MainTab(wx.Panel):
         outputStr = str(self.ALUOutput).zfill(16)
         self.regGrid.SetCellValue(self.regB, 1, outputStr)
         
-    def updateCode(self, opcodes, codes, codeMemory):
+    def updateCode(self, opcodes, codes, codeMemory, dataRepresentation):
         # EMPTY GRID
+        self.dataRepresentation = dataRepresentation
         if self.codeGrid.GetNumberRows() > 0:
             self.codeGrid.DeleteRows(0, self.codeGrid.GetNumberRows())
 
@@ -296,6 +298,7 @@ class MainTab(wx.Panel):
 
     def updateData(self, dataMemory, data, dataRepresentation):
         # EMPTY GRID
+        self.dataRepresentation = dataRepresentation
         if self.dataGrid.GetNumberRows() > 0:
             self.dataGrid.DeleteRows(0, self.dataGrid.GetNumberRows())
 
@@ -647,7 +650,7 @@ class MainFrame(wx.Frame):
     def updateMain(self, opcodes, codes, codeMemory, dataMemory, data, dataRepresentation):
         self.MTab.resetRegisters()
         if codes is not None:
-            self.MTab.updateCode(opcodes, codes, codeMemory)
+            self.MTab.updateCode(opcodes, codes, codeMemory, dataRepresentation)
         if data is not None:
             self.MTab.updateData(dataMemory, data, dataRepresentation)
         self.MTab.prepareCycles(codeMemory, dataMemory, opcodes)
