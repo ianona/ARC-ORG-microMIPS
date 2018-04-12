@@ -129,13 +129,13 @@ class MainTab(wx.Panel):
                 self.daddu(line)
             elif "SD" in line:
                 self.sd(line)
-            elif "LD" in current:
+            elif "LD" in line:
                 self.ld(line)
-            elif "BC" in current:
+            elif "BC" in line:
                 self.bgec(line)
-            elif "BGEC" in current:
+            elif "BGEC" in line:
                 self.bgec(line)
-            elif "SLTI" in current:
+            elif "SLTI" in line:
                 self.slti(line)
 
         self.runBtn.Hide()  
@@ -180,41 +180,97 @@ class MainTab(wx.Panel):
         self.regGrid.SetCellValue(self.regB, 1, self.ALUOutput)
 
     def daddu(self, line):
+        self.ALUOutput = bin(int(self.A,16) + int(self.B,16)).split("b")[1]
+        while len(self.ALUOutput) % 4 != 0:
+            self.ALUOutput = "0" + self.ALUOutput
+        sign = self.ALUOutput[0]
+
+        self.ALUOutput = hex(int(self.ALUOutput, 2)).split("x")[1].zfill(16).upper()
+        self.COND = 0
+        
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
 
         # CYCLE 5: WB (write-back cycle)
+        self.regGrid.SetCellValue(int(self.opcodeBin[16:21],2), 1, self.ALUOutput)
+
 
     def sd(self, line):
+        print("Sammie")
+        self.ALUOutput = bin(int(self.A,16) + int(self.IMM,16)).split("b")[1]
+        print("ALUOutput: " + self.ALUOutput)
+        self.COND = 0
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
-
+        dataToStore = (self.IMM)[-4:]
+        self.dataRepresentation[dataToStore] = self.B
+        print("DATA REPRESENTATION")
+        print(self.dataRepresentation)
         # CYCLE 5: WB (write-back cycle)
-
+        
+        
     def ld(self, line):
+        print("Sammie")
+        self.ALUOutput = bin(int(self.A,16) + int(self.IMM,16)).split("b")[1]
+        print("ALUOutput: " + self.ALUOutput)
+        self.COND = 0
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
-
+        print("DATA REPRESENTATION")
+        print(self.dataRepresentation)
+        dataToLoad = (self.IMM)[-4:]
+        self.LMD = self.dataRepresentation[dataToLoad]
+        print("LMD")
+        print(self.LMD)
+        
         # CYCLE 5: WB (write-back cycle)
-
+        print("Reg B")
+        print(self.regB)
+        self.regGrid.SetCellValue(self.regB, 1, self.LMD)
+        print("Register: ")
+        print(self.regGrid.GetCellValue(self.regB, 1))
     def bc(self, line):
+        print(self.NPC)
+        
+        self.ALUOutput = hex(self.s64(int(self.NPC,16)) + (self.s64(int(self.IMM,16))* 4)).split("x")[1].zfill(4)
+        print(self.ALUOutput)
+        self.COND = 1
         # CYCLE 4: MEM (memory access/branch completion cycle)
-        self.PC = self.NPC
+        self.PC = self.ALUOutput
 
         # CYCLE 5: WB (write-back cycle)
+
+    def s64(self, value):
+        return -(value & 0x8000) | (value & 0x7fff)
 
     def bgec(self, line):
+        print(self.NPC)
+        self.ALUOutput = hex(self.s64(int(self.NPC,16)) + (self.s64(int(self.IMM,16))* 4)).split("x")[1].zfill(4)
+        print(self.ALUOutput)
+        if(self.s64(int(self.A)) >= self.s64(int(self.B))):
+           self.COND = 1
+           self.PC = self.ALUOutput
         # CYCLE 4: MEM (memory access/branch completion cycle)
-        self.PC = self.NPC
+        else:
+            self.COND = 0
+            self.PC = self.NPC
 
         # CYCLE 5: WB (write-back cycle)
 
     def slti(self, line):
+        if int(self.A, 16) < int(self.IMM, 16):
+            self.ALUOutput = 0
+        else:
+            self.ALUOutput = 1
+        # print("ALUOutput: " + self.ALUOutput)
+        self.COND = 0
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
 
         # CYCLE 5: WB (write-back cycle)
-
+        outputStr = str(self.ALUOutput).zfill(16)
+        self.regGrid.SetCellValue(self.regB, 1, outputStr)
+        
     def updateCode(self, opcodes, codes, codeMemory):
         # EMPTY GRID
         if self.codeGrid.GetNumberRows() > 0:
@@ -247,18 +303,34 @@ class MainTab(wx.Panel):
         del data[0]
 
         # ADDS NEW ROW FOR EACH LINE OF DATA
-        for line in data:
+        for line in dataRepresentation:
             self.dataGrid.AppendRows(1)
             cur = self.dataGrid.GetNumberRows() - 1
-            self.dataGrid.SetCellValue(cur, 0, dataMemory[line])
-            self.dataGrid.SetCellValue(cur, 1, dataRepresentation[dataMemory[line]])
-            self.dataGrid.SetCellValue(cur, 2, line.split(": ")[0])
-            self.dataGrid.SetCellValue(cur, 3, line.split(": ")[1])
+            self.dataGrid.SetCellValue(cur, 0, line)
+            self.dataGrid.SetCellValue(cur, 1, dataRepresentation[line])
+
+            if line in list(dataMemory.values()):
+                for x in dataMemory:
+                    if dataMemory[x] == line:
+                        found = x
+                self.dataGrid.SetCellValue(cur, 2, found.split(":")[0])
+                self.dataGrid.SetCellValue(cur, 3, found.split(":")[1])
             self.dataGrid.SetReadOnly(cur, 0, True)
             self.dataGrid.SetReadOnly(cur, 1, True)
             self.dataGrid.SetReadOnly(cur, 2, True)
             self.dataGrid.SetReadOnly(cur, 3, True)
             self.dataGrid.AutoSizeColumns(True)
+
+        # SET EMPTY DATA ROWS
+        start = list(dataRepresentation.keys())[-1]
+        start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+               
+        while start != "0100":
+            print(start)
+            self.dataGrid.AppendRows(1)
+            cur = self.dataGrid.GetNumberRows() - 1
+            self.dataGrid.SetCellValue(cur, 0, start)
+            start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
 
 class CodeTab(wx.Panel):
     def __init__(self, parent):
@@ -324,7 +396,8 @@ class CodeTab(wx.Panel):
             self.getOpcodes()
 
             # OUTPUT RESULTS TO CONSOLE
-            '''
+            
+            
             print("----------")
             print("CODE MEMORY")
             print(self.codeMemory)
@@ -339,7 +412,8 @@ class CodeTab(wx.Panel):
                 line = self.lines[i]
                 print("Line " + str(i + 1)  + ": " + line + " : " + self.opcodes[line])
             print("----------")
-            '''
+            
+            
 
             # TELLS MAINFRAME TO UPDATE THE MAIN TAB
             self.parent.GetParent().GetParent().updateMain(self.opcodes, self.code, self.codeMemory, self.dataMemory, self.data, self.dataRepresentation)
@@ -502,15 +576,22 @@ class CodeTab(wx.Panel):
                 if args[1] == ".WORD64":
                     data = data.replace("#","")
                     data = data.zfill(16)
+
+                    print(data)
                 elif args[1] == ".ASCIIZ":
                     data = data.replace('"','')
                     temp = ""
                     for letter in data:
                         temp = hex(ord(letter)).split("x")[1] + temp
                     data = temp.zfill(16).upper()
+                    print(data)
+                
+                while len(data) > 0:
+                    toStore = data[-2:]
+                    self.dataRepresentation[start] = toStore
+                    start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+                    data = data[:-2]
 
-                self.dataRepresentation[start] = data
-                start = hex(int(start,16) + 8).split("x")[1].zfill(4).upper()
 
         # STARTING FROM 0100, INCREASES BY 4 BYTES PER CODE SEGMENT
         if self.code is not None:
