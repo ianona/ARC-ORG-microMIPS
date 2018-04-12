@@ -92,7 +92,7 @@ class MainTab(wx.Panel):
         elif "LD" in line:
             self.ld(line)
         elif "BC" in line:
-            self.bgec(line)
+            self.bc(line)
         elif "BGEC" in line:
             self.bgec(line)
         elif "SLTI" in line:
@@ -267,7 +267,7 @@ class MainTab(wx.Panel):
         print(self.NPC)
         self.ALUOutput = hex(self.s64(int(self.NPC,16)) + (self.s64(int(self.IMM,16))* 4)).split("x")[1].zfill(4)
         print(self.ALUOutput)
-        if(self.s64(int(self.A)) >= self.s64(int(self.B))):
+        if(self.s64(int(self.A,16)) >= self.s64(int(self.B,16))):
            self.COND = 1
            self.PC = self.ALUOutput
         # CYCLE 4: MEM (memory access/branch completion cycle)
