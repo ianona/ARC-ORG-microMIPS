@@ -132,7 +132,7 @@ class MainTab(wx.Panel):
             elif "LD" in line:
                 self.ld(line)
             elif "BC" in line:
-                self.bgec(line)
+                self.bc(line)
             elif "BGEC" in line:
                 self.bgec(line)
             elif "SLTI" in line:
