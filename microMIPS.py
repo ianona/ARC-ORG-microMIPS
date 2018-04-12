@@ -1,5 +1,113 @@
 import wx
 import wx.grid as grid
+import time
+
+class UtilitiesTab(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+        self.initialize()
+
+    def initialize(self):
+        self.SetSize(700,500)
+        self.SetBackgroundColour("WHITE")
+
+        registers=[]
+        for i in range(1,32):
+            registers.append("R"+str(i))
+        self.regCmb = wx.ComboBox(self, choices=registers,style=wx.CB_READONLY | wx.CB_DROPDOWN,pos=(10,20))
+        self.regBox = wx.TextCtrl(self, style = wx.TE_PROCESS_ENTER, pos=(100,20), size=(190,25))
+        self.regBox.Bind(wx.EVT_TEXT_ENTER, self.addReg)
+        wx.StaticText(self, label="Inputted Register Values:", pos=(10,50))
+        self.regLog = wx.TextCtrl(self, style = wx.TE_READONLY | wx.TE_MULTILINE, pos=(10,80), size=(280,150))
+
+        dataAddr=[]
+        start="0000"
+        while start != "0100":
+            dataAddr.append(start)
+            start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+        self.dataCmb = wx.ComboBox(self, choices=dataAddr,style=wx.CB_READONLY | wx.CB_DROPDOWN,pos=(320,20))
+
+        self.dataBox = wx.TextCtrl(self, style = wx.TE_PROCESS_ENTER, pos=(420,20), size=(180,25))
+        self.dataBox.Bind(wx.EVT_TEXT_ENTER, self.addData)
+        wx.StaticText(self, label="Inputted Data Values:", pos=(320,50))
+        self.dataLog = wx.TextCtrl(self, style = wx.TE_READONLY | wx.TE_MULTILINE, pos=(320,80), size=(280,150))
+
+        self.loadBtn = wx.Button(self, label="Load", pos=(250,250), size=(120,25))
+        self.loadBtn.Bind(wx.EVT_BUTTON, self.load)
+        self.resetBtn = wx.Button(self, label="Reset", pos=(250,280), size=(120,25))
+        self.resetBtn.Bind(wx.EVT_BUTTON, self.reset)
+
+    def load(self, e):
+        r = self.regLog.GetValue().split("\n")
+        while "" in r:
+            r.remove("")
+
+        registers={}
+        for reg in r:
+            register = reg.split(": ")[0]
+            val = reg.split(": ")[1]
+            registers[register] = val
+
+        d = self.dataLog.GetValue().split("\n")
+        while "" in d:
+            d.remove("")
+
+        data={}
+        for entry in d:
+            addr = entry.split(": ")[0]
+            val = entry.split(": ")[1]
+            data[addr] = val
+
+        self.regBox.SetValue("")
+        self.regLog.SetValue("")
+        self.dataBox.SetValue("")
+        self.dataLog.SetValue("")
+        self.dataCmb.SetSelection(0)
+        self.regCmb.SetSelection(0)
+        self.parent.GetParent().GetParent().setUtility(data, registers)
+
+    def reset(self,e):
+        self.regBox.SetValue("")
+        self.regLog.SetValue("")
+        self.dataBox.SetValue("")
+        self.dataLog.SetValue("")
+        self.dataCmb.SetSelection(0)
+        self.regCmb.SetSelection(0)
+        self.parent.GetParent().GetParent().reset()
+
+    def addReg(self,e):
+        reg = self.regCmb.GetStringSelection()
+        val = self.regBox.GetValue()
+        if val != "" and len(val) < 17 and self.isHex(val):
+            while len(val) < 16:
+                val = "0"+val
+
+            val = val.upper()
+            self.regLog.AppendText(reg+": "+val+"\n")
+            self.regBox.SetValue("")
+        else:
+            wx.MessageBox('Value cannot be empty and must be composed of 16 or less hex values', 'ERROR: Invalid Value', wx.OK | wx.ICON_INFORMATION)
+
+    def addData(self,e):
+        addr = self.dataCmb.GetStringSelection()
+        val = self.dataBox.GetValue()
+
+        if len(val) < 3 and self.isHex(val) and val != "":
+            while len(val) < 2:
+                val = "0"+val
+            val=val.upper()
+            self.dataLog.AppendText(addr+": "+val+"\n")
+            self.dataBox.SetValue("")
+        else:
+            wx.MessageBox('Value cannot be empty and must be composed of 2 or less hex values', 'ERROR: Invalid Value', wx.OK | wx.ICON_INFORMATION)
+
+    def isHex(self,value):
+        try:
+            int(value,16)
+            return True
+        except:
+            return False
 
 class MainTab(wx.Panel):
     def __init__(self, parent):
@@ -38,6 +146,16 @@ class MainTab(wx.Panel):
         self.regGrid.SetColLabelValue(0, "Register")
         self.regGrid.SetColLabelValue(1, "Value")
         self.regGrid.SetRowLabelSize(0)
+        
+
+        # INITIALIZE TABLE FOR OUTPUT
+        wx.StaticText(self, label="Output", pos=(470,0))
+        self.outGrid = grid.Grid(self, pos = (470,20), size=(220,450))
+        self.outGrid.CreateGrid(0, 2)
+        self.outGrid.SetColLabelValue(0, "Cycle")
+        self.outGrid.SetColLabelValue(1, "Value")
+        self.outGrid.SetRowLabelSize(0)
+
         self.resetRegisters()
 
         # INITIALIZE RUN BUTTON
@@ -50,6 +168,47 @@ class MainTab(wx.Panel):
         self.runAllBtn.Bind(wx.EVT_BUTTON, self.runAll)
         self.runAllBtn.Hide()
 
+    def displayOutput(self):
+        if self.outGrid.GetNumberRows() > 0:
+            self.outGrid.DeleteRows(0, self.outGrid.GetNumberRows())
+
+        self.outGrid.AppendRows(16)
+        self.outGrid.SetCellValue(0, 0, "IF")
+        self.outGrid.SetCellValue(1, 0, "IR")
+        self.outGrid.SetCellValue(2, 0, "NPC")
+        self.outGrid.SetCellValue(3, 0, "ID")
+        self.outGrid.SetCellValue(4, 0, "A")
+        self.outGrid.SetCellValue(5, 0, "B")
+        self.outGrid.SetCellValue(6, 0, "IMM")
+        self.outGrid.SetCellValue(7, 0, "EX")
+        self.outGrid.SetCellValue(8, 0, "ALUOutput")
+        self.outGrid.SetCellValue(9, 0, "CONDITION")
+        self.outGrid.SetCellValue(10, 0, "MEM")
+        self.outGrid.SetCellValue(11, 0, "PC")
+        self.outGrid.SetCellValue(12, 0, "LMD")
+        self.outGrid.SetCellValue(13, 0, "MemoryAffected")
+        self.outGrid.SetCellValue(14, 0, "WB")
+        self.outGrid.SetCellValue(15, 0, "Rn")
+
+        self.output = [str(x) for x in self.output]
+
+        self.outGrid.SetCellValue(1, 1, self.output[0])
+        self.outGrid.SetCellValue(2, 1, self.output[1])
+
+        self.outGrid.SetCellValue(4, 1, self.output[2])
+        self.outGrid.SetCellValue(5, 1, self.output[3])
+        self.outGrid.SetCellValue(6, 1, self.output[4])
+
+        self.outGrid.SetCellValue(8, 1, self.output[5])
+        self.outGrid.SetCellValue(9, 1, self.output[6])
+
+        self.outGrid.SetCellValue(11, 1, self.output[7])
+        self.outGrid.SetCellValue(12, 1, self.output[8])
+        self.outGrid.SetCellValue(13, 1, self.output[9])
+
+        self.outGrid.SetCellValue(15, 1, self.output[10])
+        self.outGrid.AutoSizeColumns(True)
+
     def resetRegisters(self):
         for i in range(0,32):
             self.regGrid.AppendRows(1)
@@ -59,12 +218,44 @@ class MainTab(wx.Panel):
             self.regGrid.SetReadOnly(i, 1, True)
             self.regGrid.AutoSizeColumns(True)
 
-        # MANUALLY INITIALIZE REGISTERS ACCDG. TO PROBLEM SET 3
-        self.regGrid.SetCellValue(3, 1, "0000000000000004")
-        self.regGrid.SetCellValue(2, 1, "0000000000000008")
-        self.regGrid.SetCellValue(1, 1, "AABBCCDDEEFFGGHH")
+        if self.dataGrid.GetNumberRows() > 0:
+            self.dataGrid.DeleteRows(0, self.dataGrid.GetNumberRows())
+        # SET EMPTY DATA ROWS
+        start = "0000"     
+        while start != "0100":
+            self.dataGrid.AppendRows(1)
+            cur = self.dataGrid.GetNumberRows() - 1
+            self.dataGrid.SetCellValue(cur, 0, start)
+            self.dataGrid.AutoSizeColumns(True)
+            start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+
+        if self.codeGrid.GetNumberRows() > 0:
+            self.codeGrid.DeleteRows(0, self.codeGrid.GetNumberRows())
+
+        if self.outGrid.GetNumberRows() > 0:
+            self.outGrid.DeleteRows(0, self.outGrid.GetNumberRows())
+
+        self.outGrid.AppendRows(16)
+        self.outGrid.SetCellValue(0, 0, "IF")
+        self.outGrid.SetCellValue(1, 0, "IR")
+        self.outGrid.SetCellValue(2, 0, "NPC")
+        self.outGrid.SetCellValue(3, 0, "ID")
+        self.outGrid.SetCellValue(4, 0, "A")
+        self.outGrid.SetCellValue(5, 0, "B")
+        self.outGrid.SetCellValue(6, 0, "IMM")
+        self.outGrid.SetCellValue(7, 0, "EX")
+        self.outGrid.SetCellValue(8, 0, "ALUOutput")
+        self.outGrid.SetCellValue(9, 0, "CONDITION")
+        self.outGrid.SetCellValue(10, 0, "MEM")
+        self.outGrid.SetCellValue(11, 0, "PC")
+        self.outGrid.SetCellValue(12, 0, "LMD")
+        self.outGrid.SetCellValue(13, 0, "MemoryAffected")
+        self.outGrid.SetCellValue(14, 0, "WB")
+        self.outGrid.SetCellValue(15, 0, "Rn")
+        self.outGrid.AutoSizeColumns(True)
 
     def run(self, e):
+        self.output = []
         line = self.MEMORY[self.PC]
         print("now cycling " + line + " : " + self.PC)
 
@@ -72,6 +263,9 @@ class MainTab(wx.Panel):
         self.IR = self.OPCODES[self.PC]
         self.opcodeBin = bin(int(self.IR,16)).split("b")[1].zfill(32)
         self.NPC = hex(int(self.PC,16) + 4).split("x")[1].zfill(4)
+
+        self.output.append(self.IR)
+        self.output.append(self.NPC)
 
         # CYCLE 2: ID (instruction decode cycle)
         # NUMBER OF REGISTER
@@ -81,6 +275,10 @@ class MainTab(wx.Panel):
         self.A = self.regGrid.GetCellValue(self.regA, 1)
         self.B = self.regGrid.GetCellValue(self.regB, 1)
         self.IMM = hex(int(self.opcodeBin[16:32],2)).split("x")[1].zfill(16)
+
+        self.output.append(self.A)
+        self.output.append(self.B)
+        self.output.append(self.IMM)
 
         # CYCLE 3: EX (execution cycle)
         if "DADDIU" in line:
@@ -98,6 +296,16 @@ class MainTab(wx.Panel):
         elif "SLTI" in line:
             self.slti(line)
 
+        self.output.append(self.ALUOutput)
+        self.output.append(self.COND)
+
+        self.output.append(self.PC)
+        self.output.append(self.LMD)
+        self.output.append(self.MemoryAffected)
+
+        self.output.append(self.Rn)
+        self.displayOutput()
+
         # IF DONE RUNNING INSTRUCTIONS
         if self.PC not in self.MEMORY:
             self.runBtn.Hide()
@@ -105,6 +313,7 @@ class MainTab(wx.Panel):
 
     def runAll(self, e):
         while self.PC in self.MEMORY:
+            self.output = []
             line = self.MEMORY[self.PC]
             print("now cycling " + line + " : " + self.PC)
 
@@ -112,6 +321,9 @@ class MainTab(wx.Panel):
             self.IR = self.OPCODES[self.PC]
             self.opcodeBin = bin(int(self.IR,16)).split("b")[1].zfill(32)
             self.NPC = hex(int(self.PC,16) + 4).split("x")[1].zfill(4)
+
+            self.output.append(self.IR)
+            self.output.append(self.NPC)
 
             # CYCLE 2: ID (instruction decode cycle)
             # NUMBER OF REGISTER
@@ -121,6 +333,10 @@ class MainTab(wx.Panel):
             self.A = self.regGrid.GetCellValue(self.regA, 1)
             self.B = self.regGrid.GetCellValue(self.regB, 1)
             self.IMM = hex(int(self.opcodeBin[16:32],2)).split("x")[1].zfill(16)
+
+            self.output.append(self.A)
+            self.output.append(self.B)
+            self.output.append(self.IMM)
 
             # CYCLE 3: EX (execution cycle)
             if "DADDIU" in line:
@@ -137,6 +353,17 @@ class MainTab(wx.Panel):
                 self.bgec(line)
             elif "SLTI" in line:
                 self.slti(line)
+
+            self.output.append(self.ALUOutput)
+            self.output.append(self.COND)
+
+            self.output.append(self.PC)
+            self.output.append(self.LMD)
+            self.output.append(self.MemoryAffected)
+
+            self.output.append(self.Rn)
+            self.displayOutput()
+            
 
         self.runBtn.Hide()  
         self.runAllBtn.Hide()
@@ -175,6 +402,9 @@ class MainTab(wx.Panel):
 
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
+        self.LMD = "N/A"
+        self.MemoryAffected = "N/A"
+        self.Rn = self.regB
 
         # CYCLE 5: WB (write-back cycle)
         self.regGrid.SetCellValue(self.regB, 1, self.ALUOutput)
@@ -190,6 +420,11 @@ class MainTab(wx.Panel):
         
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
+
+        # GIVE ME VALUES
+        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
 
         # CYCLE 5: WB (write-back cycle)
         self.regGrid.SetCellValue(int(self.opcodeBin[16:21],2), 1, self.ALUOutput)
@@ -216,14 +451,19 @@ class MainTab(wx.Panel):
             tempB = tempB[:-2]
             self.dataGrid.SetCellValue(addressRow, 1, tempByte)
             addressRow = addressRow + 1
+
+        # GIVE ME VALUES
+        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        
+
         print("DATA REPRESENTATION")
         print(self.dataRepresentation)
         # CYCLE 5: WB (write-back cycle)
         
         
-        
     def ld(self, line):
-        print("Sammie")
         self.ALUOutput = bin(int(self.A,16) + int(self.IMM,16)).split("b")[1]
         print("ALUOutput: " + self.ALUOutput)
         self.COND = 0
@@ -241,6 +481,11 @@ class MainTab(wx.Panel):
             dataToLoad = hex(int(dataToLoad, 16) + 1).split("x")[1].zfill(4)
         print("LMD")
         print(self.LMD)
+
+        # GIVE ME VALUES
+        #self.LMD = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
         
         # CYCLE 5: WB (write-back cycle)
         print("Reg B")
@@ -257,6 +502,11 @@ class MainTab(wx.Panel):
         self.COND = 1
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.ALUOutput
+
+        # GIVE ME VALUES
+        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
 
         # CYCLE 5: WB (write-back cycle)
 
@@ -275,6 +525,11 @@ class MainTab(wx.Panel):
             self.COND = 0
             self.PC = self.NPC
 
+        # GIVE ME VALUES
+        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+
         # CYCLE 5: WB (write-back cycle)
 
     def slti(self, line):
@@ -286,6 +541,11 @@ class MainTab(wx.Panel):
         self.COND = 0
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
+
+        # GIVE ME VALUES
+        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
 
         # CYCLE 5: WB (write-back cycle)
         outputStr = str(self.ALUOutput).zfill(16)
@@ -343,16 +603,13 @@ class MainTab(wx.Panel):
             self.dataGrid.SetReadOnly(cur, 3, True)
             self.dataGrid.AutoSizeColumns(True)
 
-        # SET EMPTY DATA ROWS
-        start = list(dataRepresentation.keys())[-1]
-        start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
-               
-        while start != "0100":
-            print(start)
-            self.dataGrid.AppendRows(1)
-            cur = self.dataGrid.GetNumberRows() - 1
-            self.dataGrid.SetCellValue(cur, 0, start)
-            start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+    def updateFromUtility(self, data, registers):
+        for d in data:
+            row = int(d,16)
+            self.dataGrid.SetCellValue(row, 1, data[d])
+        for r in registers:
+            row = int(r.replace("R",""))
+            self.regGrid.SetCellValue(row, 1, registers[r])
 
 class CodeTab(wx.Panel):
     def __init__(self, parent):
@@ -377,6 +634,8 @@ class CodeTab(wx.Panel):
         # INITIALIZE LOAD BUTTON
         self.loadBtn = wx.Button(self, label="Load", pos=(10,415), size=(100,25))
         self.loadBtn.Bind(wx.EVT_BUTTON, self.test)
+        self.resetBtn = wx.Button(self, label="Reset", pos=(120,415), size=(100,25))
+        self.resetBtn.Bind(wx.EVT_BUTTON, self.reset)
 
         self.instructions = ["ld","sd","daddiu","daddu","bc","bgec","slti",".code",".data",":"]
         self.instructions = [word.upper() for word in self.instructions]
@@ -418,8 +677,6 @@ class CodeTab(wx.Panel):
             self.getOpcodes()
 
             # OUTPUT RESULTS TO CONSOLE
-            
-            
             print("----------")
             print("CODE MEMORY")
             print(self.codeMemory)
@@ -452,6 +709,10 @@ class CodeTab(wx.Panel):
             if not valid:
                 return False
         return True
+
+    def reset(self,e):
+        self.parent.GetParent().GetParent().reset()
+        self.clearOpcodes()
 
     def getOpcodes(self):
         for line in self.lines:
@@ -637,6 +898,11 @@ class CodeTab(wx.Panel):
             self.opcodeGrid.SetReadOnly(cur, 1, True)
             self.opcodeGrid.AutoSizeColumns(True)
 
+    def clearOpcodes(self):
+        # EMPTY GRID
+        if self.opcodeGrid.GetNumberRows() > 0:
+            self.opcodeGrid.DeleteRows(0, self.opcodeGrid.GetNumberRows())
+
 
 class MainFrame(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -659,20 +925,28 @@ class MainFrame(wx.Frame):
         self.nb = wx.Notebook(self.mainPanel, pos=(0,50), size=(725,500))
         self.CTab = CodeTab(self.nb)
         self.MTab = MainTab(self.nb)
+        self.UTab = UtilitiesTab(self.nb)
         self.nb.AddPage(self.CTab, "Load/View")
         self.nb.AddPage(self.MTab, "Main")
+        self.nb.AddPage(self.UTab, "Utilities")
 
         self.SetPosition((300,200))
         self.Show()
 
     # CALLS UPDATE METHODS IN MAIN WITH THE UPDATED INFO
     def updateMain(self, opcodes, codes, codeMemory, dataMemory, data, dataRepresentation):
-        self.MTab.resetRegisters()
         if codes is not None:
             self.MTab.updateCode(opcodes, codes, codeMemory, dataRepresentation)
         if data is not None:
             self.MTab.updateData(dataMemory, data, dataRepresentation)
         self.MTab.prepareCycles(codeMemory, dataMemory, opcodes)
+        self.nb.SetSelection(1)
+
+    def reset(self):
+        self.MTab.resetRegisters()
+
+    def setUtility(self,data,registers):
+        self.MTab.updateFromUtility(data,registers)
         self.nb.SetSelection(1)
 
 def main():
