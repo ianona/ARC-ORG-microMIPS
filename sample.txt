@@ -4,3 +4,23 @@ slti r4,r3,#4444
 bc L1
 slti r4,r3,#2132
 L1: daddu r5,r4,r3
+
+----------
+
+.data
+ALPHA: .word64 #0001
+BETA: .word64 #000A
+RESULT: .word64 #0000
+COUNT: .word64 #0000
+
+.code
+LD R1, ALPHA(r0)
+LD R2, BETA(r0)
+
+L1: BGEC r1,r2,END
+DADDIU r3, r3, #0001
+DADDU r1, r1, r1
+BC l1
+
+END: SD r3, COUNT(r0)
+SD r1, RESULT(r0)

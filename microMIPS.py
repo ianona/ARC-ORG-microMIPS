@@ -432,7 +432,7 @@ class MainTab(wx.Panel):
             self.dataRepresentation[dataToStore] = tempByte
             dataToStore = hex(int(dataToStore, 16) + 1).split("x")[1].zfill(4)
             tempB = tempB[:-2]
-            self.dataGrid.SetCellValue(addressRow, 1, tempByte)
+            self.dataGrid.SetCellValue(int(dataToStore, 16) - 1, 1, tempByte)
             addressRow = addressRow + 1
 
         # GIVE ME VALUES
@@ -586,6 +586,15 @@ class MainTab(wx.Panel):
             self.dataGrid.SetReadOnly(cur, 3, True)
             self.dataGrid.AutoSizeColumns(True)
 
+        start = list(dataRepresentation.keys())[-1]
+        start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+        while start != "0100":
+            self.dataGrid.AppendRows(1)
+            cur = self.dataGrid.GetNumberRows() - 1
+            self.dataGrid.SetCellValue(cur, 0, start)
+            self.dataGrid.AutoSizeColumns(True)
+            start = hex(int(start,16) + 1).split("x")[1].zfill(4).upper()
+
     def updateFromUtility(self, data, registers):
         for d in data:
             row = int(d,16)
@@ -657,7 +666,12 @@ class CodeTab(wx.Panel):
 
             # FUNCTION TO DETERMINE OPCODES
             self.opcodes = {}
-            self.getOpcodes()
+            if self.code is not None:
+                self.getOpcodes()
+                for i in range(0,len(self.code)):
+                    line = self.code[i]
+                    print("Line " + str(i + 1)  + ": " + line + " : " + self.opcodes[line])
+                self.updateOpcodes(self.opcodes,self.code)
 
             # OUTPUT RESULTS TO CONSOLE
             print("----------")
@@ -670,16 +684,9 @@ class CodeTab(wx.Panel):
             print("DATA Representation")
             print(self.dataRepresentation)
             print("----------")
-            for i in range(0,len(self.lines)):
-                line = self.lines[i]
-                print("Line " + str(i + 1)  + ": " + line + " : " + self.opcodes[line])
-            print("----------")
-            
-            
 
             # TELLS MAINFRAME TO UPDATE THE MAIN TAB
             self.parent.GetParent().GetParent().updateMain(self.opcodes, self.code, self.codeMemory, self.dataMemory, self.data, self.dataRepresentation)
-            self.updateOpcodes(self.opcodes,self.code)
         else:
             wx.MessageBox('Please recheck your code', 'ERROR: Invalid Syntax', wx.OK | wx.ICON_INFORMATION)
 
@@ -698,7 +705,7 @@ class CodeTab(wx.Panel):
         self.clearOpcodes()
 
     def getOpcodes(self):
-        for line in self.lines:
+        for line in self.code:
             if "DADDIU" in line or "SD" in line or "LD" in line or "BGEC" in line or "SLTI" in line:
                 self.opcodes[line] = self.IType(line)
             elif "DADDU" in line:
