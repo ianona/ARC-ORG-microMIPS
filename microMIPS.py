@@ -121,7 +121,7 @@ class MainTab(wx.Panel):
 
         # INITIALIZE TABLE FOR CODE INFO
         wx.StaticText(self, label="Code", pos=(0,0))
-        self.codeGrid = grid.Grid(self, pos = (0,20), size=(220,200))
+        self.codeGrid = grid.Grid(self, pos = (0,20), size=(320,200))
         self.codeGrid.CreateGrid(0, 4)
         self.codeGrid.SetColLabelValue(0, "Address")
         self.codeGrid.SetColLabelValue(1, "Rep")
@@ -172,23 +172,10 @@ class MainTab(wx.Panel):
         if self.outGrid.GetNumberRows() > 0:
             self.outGrid.DeleteRows(0, self.outGrid.GetNumberRows())
 
+        headers = ["IF","IR","NPC","ID","A","B","IMM","EX","ALUOutput","CONDITION","MEM","PC","LMD","MemoryAffected","WB","Rn"]
         self.outGrid.AppendRows(16)
-        self.outGrid.SetCellValue(0, 0, "IF")
-        self.outGrid.SetCellValue(1, 0, "IR")
-        self.outGrid.SetCellValue(2, 0, "NPC")
-        self.outGrid.SetCellValue(3, 0, "ID")
-        self.outGrid.SetCellValue(4, 0, "A")
-        self.outGrid.SetCellValue(5, 0, "B")
-        self.outGrid.SetCellValue(6, 0, "IMM")
-        self.outGrid.SetCellValue(7, 0, "EX")
-        self.outGrid.SetCellValue(8, 0, "ALUOutput")
-        self.outGrid.SetCellValue(9, 0, "CONDITION")
-        self.outGrid.SetCellValue(10, 0, "MEM")
-        self.outGrid.SetCellValue(11, 0, "PC")
-        self.outGrid.SetCellValue(12, 0, "LMD")
-        self.outGrid.SetCellValue(13, 0, "MemoryAffected")
-        self.outGrid.SetCellValue(14, 0, "WB")
-        self.outGrid.SetCellValue(15, 0, "Rn")
+        for i in range(0,len(headers)):
+            self.outGrid.SetCellValue(i, 0, headers[i])
 
         self.output = [str(x) for x in self.output]
 
@@ -236,22 +223,9 @@ class MainTab(wx.Panel):
             self.outGrid.DeleteRows(0, self.outGrid.GetNumberRows())
 
         self.outGrid.AppendRows(16)
-        self.outGrid.SetCellValue(0, 0, "IF")
-        self.outGrid.SetCellValue(1, 0, "IR")
-        self.outGrid.SetCellValue(2, 0, "NPC")
-        self.outGrid.SetCellValue(3, 0, "ID")
-        self.outGrid.SetCellValue(4, 0, "A")
-        self.outGrid.SetCellValue(5, 0, "B")
-        self.outGrid.SetCellValue(6, 0, "IMM")
-        self.outGrid.SetCellValue(7, 0, "EX")
-        self.outGrid.SetCellValue(8, 0, "ALUOutput")
-        self.outGrid.SetCellValue(9, 0, "CONDITION")
-        self.outGrid.SetCellValue(10, 0, "MEM")
-        self.outGrid.SetCellValue(11, 0, "PC")
-        self.outGrid.SetCellValue(12, 0, "LMD")
-        self.outGrid.SetCellValue(13, 0, "MemoryAffected")
-        self.outGrid.SetCellValue(14, 0, "WB")
-        self.outGrid.SetCellValue(15, 0, "Rn")
+        headers = ["IF","IR","NPC","ID","A","B","IMM","EX","ALUOutput","CONDITION","MEM","PC","LMD","MemoryAffected","WB","Rn"]
+        for i in range(0,len(headers)):
+            self.outGrid.SetCellValue(i, 0, headers[i])
         self.outGrid.AutoSizeColumns(True)
 
     def run(self, e):
@@ -295,6 +269,7 @@ class MainTab(wx.Panel):
             self.bgec(line)
         elif "SLTI" in line:
             self.slti(line)
+        self.PC=self.PC.upper()
 
         self.output.append(self.ALUOutput)
         self.output.append(self.COND)
@@ -306,6 +281,8 @@ class MainTab(wx.Panel):
         self.output.append(self.Rn)
         self.displayOutput()
 
+        # R0 IS ALWAYS 0
+        self.regGrid.SetCellValue(0, 1, "0000000000000000")
         # IF DONE RUNNING INSTRUCTIONS
         if self.PC not in self.MEMORY:
             self.runBtn.Hide()
@@ -353,6 +330,7 @@ class MainTab(wx.Panel):
                 self.bgec(line)
             elif "SLTI" in line:
                 self.slti(line)
+            self.PC=self.PC.upper()
 
             self.output.append(self.ALUOutput)
             self.output.append(self.COND)
@@ -363,8 +341,11 @@ class MainTab(wx.Panel):
 
             self.output.append(self.Rn)
             self.displayOutput()
-            
 
+            # R0 IS ALWAYS 0
+            self.regGrid.SetCellValue(0, 1, "0000000000000000")
+
+            
         self.runBtn.Hide()  
         self.runAllBtn.Hide()
 
@@ -404,7 +385,7 @@ class MainTab(wx.Panel):
         self.PC = self.NPC
         self.LMD = "N/A"
         self.MemoryAffected = "N/A"
-        self.Rn = self.regB
+        self.Rn = self.ALUOutput
 
         # CYCLE 5: WB (write-back cycle)
         self.regGrid.SetCellValue(self.regB, 1, self.ALUOutput)
@@ -422,9 +403,9 @@ class MainTab(wx.Panel):
         self.PC = self.NPC
 
         # GIVE ME VALUES
-        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
-        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
-        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        self.LMD = "N/A"
+        self.MemoryAffected = "N/A"
+        self.Rn = self.ALUOutput
 
         # CYCLE 5: WB (write-back cycle)
         self.regGrid.SetCellValue(int(self.opcodeBin[16:21],2), 1, self.ALUOutput)
@@ -441,9 +422,11 @@ class MainTab(wx.Panel):
         print("B = " + self.B)
         tempB = self.B
         addressRow = 0
+        self.MemoryAffected = []
         if int(dataToStore, 16) is not 0:
             addressRow = 1000 % int(dataToStore, 16)
         for i in range(8):
+            self.MemoryAffected.append(dataToStore)
             tempByte = tempB[-2:]
             print("Storing " + tempByte)
             self.dataRepresentation[dataToStore] = tempByte
@@ -453,9 +436,9 @@ class MainTab(wx.Panel):
             addressRow = addressRow + 1
 
         # GIVE ME VALUES
-        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
-        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
-        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        self.LMD = "N/A"
+        #self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
+        self.Rn = "N/A"
         
 
         print("DATA REPRESENTATION")
@@ -472,20 +455,20 @@ class MainTab(wx.Panel):
         self.PC = self.NPC
         print("DATA REPRESENTATION")
         print(self.dataRepresentation)
-        dataToLoad = (self.IMM)[-4:]
+        dataToLoad = (self.IMM)[-4:].upper()
         
         self.LMD = ""
         for i in range(8):
             print("Data to Load: " + dataToLoad)
             self.LMD = self.dataRepresentation[dataToLoad] + self.LMD
-            dataToLoad = hex(int(dataToLoad, 16) + 1).split("x")[1].zfill(4)
+            dataToLoad = hex(int(dataToLoad, 16) + 1).split("x")[1].zfill(4).upper()
         print("LMD")
         print(self.LMD)
 
         # GIVE ME VALUES
         #self.LMD = "ZACH/KYLE GIVE ME A VALUE"
-        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
-        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        self.MemoryAffected = "N/A"
+        self.Rn = self.LMD
         
         # CYCLE 5: WB (write-back cycle)
         print("Reg B")
@@ -504,9 +487,9 @@ class MainTab(wx.Panel):
         self.PC = self.ALUOutput
 
         # GIVE ME VALUES
-        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
-        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
-        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        self.LMD = "N/A"
+        self.MemoryAffected = "N/A"
+        self.Rn = "N/A"
 
         # CYCLE 5: WB (write-back cycle)
 
@@ -526,26 +509,26 @@ class MainTab(wx.Panel):
             self.PC = self.NPC
 
         # GIVE ME VALUES
-        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
-        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
-        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        self.LMD = "N/A"
+        self.MemoryAffected = "N/A"
+        self.Rn = "N/A"
 
         # CYCLE 5: WB (write-back cycle)
 
     def slti(self, line):
         if int(self.A, 16) < int(self.IMM, 16):
-            self.ALUOutput = 0
-        else:
             self.ALUOutput = 1
+        else:
+            self.ALUOutput = 0
         # print("ALUOutput: " + self.ALUOutput)
         self.COND = 0
         # CYCLE 4: MEM (memory access/branch completion cycle)
         self.PC = self.NPC
 
         # GIVE ME VALUES
-        self.LMD = "ZACH/KYLE GIVE ME A VALUE"
-        self.MemoryAffected = "ZACH/KYLE GIVE ME A VALUE"
-        self.Rn = "ZACH/KYLE GIVE ME A VALUE"
+        self.LMD = "N/A"
+        self.MemoryAffected = "N/A"
+        self.Rn = str(self.ALUOutput).zfill(16)
 
         # CYCLE 5: WB (write-back cycle)
         outputStr = str(self.ALUOutput).zfill(16)

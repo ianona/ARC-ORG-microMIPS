@@ -1,0 +1,6 @@
+.code
+daddiu r3,r0,#7777
+slti r4,r3,#4444
+bc L1
+slti r4,r3,#2132
+L1: daddu r5,r4,r3
